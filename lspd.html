@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚔 LSPD نظام الشرطة 🚔</title>
+  <style>
+    * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
+    body { margin: 0; height: 100vh; background: linear-gradient(135deg, #1a0033, #0a1626); color: white; overflow: hidden; }
+    .overlay { position: fixed; inset: 0; background: radial-gradient(circle at top, rgba(255,0,98,0.15), transparent 60%); z-index: 0; }
+    .hidden { display: none !important; }
+    .login, .dashboard, .view, .admin-panel { position: relative; z-index: 1; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; padding: 20px; }
+    
+    .login h2, .dashboard h1, .view h2 { 
+      margin: 0; font-size: 2.5em; 
+      background: linear-gradient(45deg, #ff0080, #00d4ff, #ff6b00);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+      background-clip: text; 
+    }
+
+    .login input, .admin-panel input, .admin-panel select, .admin-panel textarea { 
+      width: 300px; max-width: 90vw; padding: 15px; border-radius: 12px; 
+      border: 2px solid rgba(255,255,255,0.1); outline: none; 
+      background: rgba(255,255,255,0.1); color: white; font-size: 16px; 
+      backdrop-filter: blur(10px); transition: all 0.3s ease; 
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: #ff0080; box-shadow: 0 0 20px rgba(255,0,128,0.4); }
+    .login input::placeholder, .admin-panel input::placeholder { color: rgba(255,255,255,0.7); }
+
+    button { padding: 15px 30px; border-radius: 12px; border: none; cursor: pointer; 
+      background: linear-gradient(45deg, rgba(255,0,128,0.5), rgba(0,212,255,0.3)); 
+      color: white; font-size: 16px; font-weight: 600; transition: all 0.3s ease; 
+      backdrop-filter: blur(12px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+    }
+
+    button:hover { background: linear-gradient(45deg, rgba(255,0,128,0.8), rgba(0,212,255,0.6)); 
+      transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,0,128,0.4); 
+    }
+
+    .admin-btn { background: linear-gradient(45deg, rgba(255,107,107,0.6), rgba(255,107,107,0.4)) !important; }
+    .admin-btn:hover { background: linear-gradient(45deg, rgba(255,107,107,0.9), rgba(255,107,107,0.7)) !important; }
+    .master-btn { background: linear-gradient(45deg, rgba(255,215,0,0.7), rgba(255,215,0,0.5)) !important; }
+    .send-btn { background: linear-gradient(45deg, rgba(0,255,127,0.7), rgba(0,255,127,0.5)) !important; }
+
+    .menu { display: flex; flex-direction: column; gap: 25px; max-width: 350px; width: 90vw; }
+    .card { width: 100%; padding: 25px; backdrop-filter: blur(15px); background: rgba(255,255,255,0.08); 
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; text-align: center; 
+      font-size: 18px; font-weight: 500; transition: all 0.3s ease; 
+    }
+    .card:hover { background: rgba(255,255,255,0.12); transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+
+    #error { color: #ff6b6b; font-weight: 500; min-height: 20px; text-align: center; }
+    .user-info { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 20px; font-size: 14px; }
+    .back-btn { position: absolute; top: 20px; left: 20px; padding: 10px 20px !important; font-size: 14px !important; }
+
+    /* View1 - إدارة الحالات */
+    .chat-container { display: flex; height: 85vh; width: 95vw; max-width: 1200px; gap: 20px; }
+    .chat-main { flex: 2; background: rgba(0,0,0,0.4); border-radius: 16px; padding: 20px; overflow: hidden; display: flex; flex-direction: column; }
+    .chat-messages { flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 10px; }
+    .chat-input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #ff0080; background: rgba(255,255,255,0.1); color: white; resize: none; margin-bottom: 10px; }
+    .message { margin: 10px 0; padding: 12px; border-radius: 12px; backdrop-filter: blur(10px); }
+    .message.admin { background: rgba(255,0,128,0.3); border-left: 4px solid #ff0080; }
+    .message.user { background: rgba(0,212,255,0.3); border-left: 4px solid #00d4ff; }
+
+    .cases-sidebar { flex: 1; background: rgba(0,0,0,0.6); border-radius: 16px; padding: 20px; height: 85vh; overflow-y: auto; }
+    .case-item { background: rgba(255,255,255,0.1); margin: 10px 0; padding: 15px; border-radius: 12px; border-right: 4px solid #ff6b00; }
+
+    /* View2 - إدارة الأفراد */
+    .table-container { width: 95vw; max-width: 1000px; background: rgba(0,0,0,0.4); border-radius: 16px; padding: 20px; height: 85vh; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    th { background: rgba(255,0,128,0.3); }
+    .points-btn { background: #00ff7f; color: black; font-weight: bold; padding: 8px 15px; border-radius: 8px; cursor: pointer; border: none; }
+
+    /* View3 - الإدارة العليا */
+    .high-commands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 95vw; max-width: 1200px; height: 85vh; }
+    .command-box { background: rgba(0,0,0,0.6); border-radius: 16px; padding: 25px; height: 300px; overflow-y: auto; border-top: 4px solid #ffd700; }
+
+    .admin-panel { max-width: 500px; text-align: center; gap: 25px; }
+    .ranks-display { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 12px; max-height: 200px; overflow-y: auto; width: 100%; text-align: right; }
+    .rank-item { padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 14px; }
+    textarea { resize: vertical; min-height: 100px; }
+    .change-master { background: rgba(255,215,0,0.3); border: 2px solid #ffd700; color: #ffd700; font-weight: bold; }
+
+    @media (max-width: 768px) { 
+      .chat-container { flex-direction: column; height: 90vh; } 
+      .cases-sidebar, .chat-main { height: 45vh; } 
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+
+  <!-- LOGIN -->
+  <div class="login" id="loginBox">
+    <h2>🚔 LSPD نظام الشرطة 🚔</h2>
+    <input type="text" id="username" placeholder="اسم المستخدم" autocomplete="off">
+    <input type="password" id="password" placeholder="كلمة المرور" autocomplete="off">
+    <button onclick="login()">دخول النظام</button>
+    <p id="error"></p>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div class="admin-panel hidden" id="adminPanel">
+    <button class="back-btn admin-btn" onclick="backToLogin()">← رجوع للدخول</button>
+    <h2>⚙️ لوحة إدارة الحسابات</h2>
+    
+    <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap;">
+      <input type="text" id="newUsername" placeholder="اسم المستخدم الجديد">
+      <input type="password" id="newPassword" placeholder="كلمة مرور موحدة">
+      <input type="text" id="newRank" placeholder="الرتبة (Minister...)">
+      <button onclick="addUser()">➕ إضافة حساب</button>
+    </div>
+    
+    <textarea id="allUsers" placeholder='JSON مثال:
+[
+  {"username":"user1","password":"pass123","rank":"Minister","access":["view1","view2","view3"]},
+  {"username":"user2","password":"pass123","rank":"Colonel","access":["view1","view2"]}
+]'></textarea>
+    
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%;">
+      <button onclick="loadUsers()">📋 تحديث الحسابات</button>
+      <button onclick="clearAllUsers()" class="admin-btn">🗑️ مسح الكل</button>
+      <button onclick="showAllUsers()" class="admin-btn">👁️ عرض الكل</button>
+    </div>
+
+    <div style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 12px; border: 2px solid #ffd700; width: 100%;">
+      <h3 style="color: #ffd700; margin: 0 0 10px 0;">🔑 تغيير كلمة مرور المدير</h3>
+      <div style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap;">
+        <input type="password" id="currentMasterPass" placeholder="الكلمة الحالية">
+        <input type="password" id="newMasterPass" placeholder="كلمة مرور جديدة">
+        <button onclick="changeMasterPassword()" class="master-btn change-master">✅ تحديث</button>
+      </div>
+      <small style="color: #ffd700; font-size: 12px;">الحالية: <span id="currentMasterDisplay">******</span></small>
+    </div>
+    
+    <div class="ranks-display" id="ranksDisplay">
+      <strong>الرتب المتوفرة:</strong><br>
+      <div id="currentRanks">اضغط "إضافة حساب" للبدء</div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="dashboard hidden" id="dashboard">
+    <div class="user-info" id="userInfo"></div>
+    <h1>لوحة التحكم الرئيسية</h1>
+    <div class="menu">
+      <button class="card" onclick="openView('view1')">📋 إدارة الحالات<br><small>الشات + الحالات</small></button>
+      <button class="card" onclick="openView('view2')">👥 إدارة الأفراد<br><small>الجدول + النقاط</small></button>
+      <button class="card" onclick="openView('view3')">⚙️ الإدارة العليا<br><small>مهام سرية + تقارير</small></button>
+    </div>
+  </div>
+
+  <!-- VIEW 1: إدارة الحالات -->
+  <div class="view hidden" id="view1">
+    <button class="back-btn" onclick="back()">← رجوع</button>
+    <h2>📋 إدارة الحالات</h2>
+    <div class="chat-container">
+      <div class="chat-main">
+        <div class="chat-messages" id="chatMessages"></div>
+        <textarea class="chat-input" id="chatInput" placeholder="اكتب تقرير الحالة هنا... (اضغط Enter أو إرسال)" rows="3"></textarea>
+        <button class="send-btn" onclick="sendMessage()" style="width:100%;">📤 إرسال التقرير</button>
+      </div>
+      <div class="cases-sidebar">
+        <h3>📂 الحالات المسجلة</h3>
+        <div id="casesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 2: إدارة الأفراد -->
+  <div class="view hidden" id="view2">
+    <button class="back-btn" onclick="back()">← رجوع</button>
+    <h2>👥 إدارة الأفراد</h2>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr><th>الاسم</th><th>الرتبة</th><th>النقاط</th><th>إجراءات</th></tr>
+        </thead>
+        <tbody id="officersTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VIEW 3: الإدارة العليا -->
+  <div class="view hidden" id="view3">
+    <button class="back-btn" onclick="back()">← رجوع</button>
+    <h2>⚙️ الإدارة العليا</h2>
+    <div class="high-commands">
+      <div class="command-box">
+        <h3>🔒 مناقشات سرية</h3>
+        <div id="secretChat">لا توجد مناقشات سرية</div>
+        <textarea id="secretInput" placeholder="اكتب رسالة سرية..." style="width:100%; height:80px; margin-top:10px;"></textarea>
+        <button onclick="addSecretMessage()" style="width:100%; margin-top:10px;">🔒 إرسال سري</button>
+      </div>
+      <div class="command-box">
+        <h3>🎯 المهام العاجلة</h3>
+        <div id="urgentTasks">لا توجد مهام عاجلة</div>
+        <input id="newTask" placeholder="مهمة جديدة..." style="width:100%; margin-top:10px;">
+        <button onclick="addTask()" style="width:100%; margin-top:10px;">➕ إضافة مهمة</button>
+      </div>
+      <div class="command-box">
+        <h3>📊 التقارير اليومية</h3>
+        <div id="dailyReports">جاري تحديث التقارير...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let users = JSON.parse(localStorage.getItem('lspd_users')) || [];
+    let MASTER_PASSWORD = localStorage.getItem('lspd_master_pass') || "admin2026";
+    let messages = JSON.parse(localStorage.getItem('lspd_messages')) || [];
+    let cases = JSON.parse(localStorage.getItem('lspd_cases')) || [];
+    let officers = JSON.parse(localStorage.getItem('lspd_officers')) || 
+      [{name:'أحمد محمد', rank:'ضابط', points:15}, {name:'خالد علي', rank:'عريف', points:28}];
+    let secretMessages = JSON.parse(localStorage.getItem('lspd_secret')) || [];
+    let tasks = JSON.parse(localStorage.getItem('lspd_tasks')) || [];
+
+    const loginBox = document.getElementById('loginBox');
+    const adminPanel = document.getElementById('adminPanel');
+    const dashboard = document.getElementById('dashboard');
+    const username = document.getElementById('username');
+    const password = document.getElementById('password');
+    const error = document.getElementById('error');
+    const userInfo = document.getElementById('userInfo');
+
+    function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+    document.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        if (document.getElementById('chatInput') === document.activeElement) sendMessage();
+        else if (document.getElementById('loginBox').contains(document.activeElement)) login();
+      }
+    });
+
+    // Admin Functions
+    function updateRanksDisplay() {
+      const ranksDiv = document.getElementById('currentRanks');
+      if (users.length === 0) { ranksDiv.innerHTML = '<em>لا توجد حسابات بعد</em>'; return; }
+      const ranks = [...new Set(users.map(u => u.rank))];
+      ranksDiv.innerHTML = ranks.map(r => `<div class="rank-item">👑 ${r}</div>`).join('');
+    }
+
+    function updateMasterDisplay() {
+      document.getElementById('currentMasterDisplay').textContent = '*'.repeat(MASTER_PASSWORD.length);
+    }
+
+    function addUser() {
+      const newUser = document.getElementById('newUsername').value.trim();
+      const newPass = document.getElementById('newPassword').value.trim();
+      const newRank = document.getElementById('newRank').value.trim();
+      if (!newUser || !newPass || !newRank) { alert('⚠️ يجب ملء جميع الحقول'); return; }
+      
+      let access = [];
+      const rankLower = newRank.toLowerCase();
+      if (['minister','وزير'].some(r => rankLower.includes(r))) access = ['view1','view2','view3'];
+      else if (['colonel','كولونيل','captain','قائد'].some(r => rankLower.includes(r))) access = ['view1','view2'];
+      else access = ['view1'];
+      
+      users.push({username: newUser, password: newPass, rank: newRank, access});
+      saveData('lspd_users', users);
+      updateRanksDisplay();
+      alert(`✅ تم إضافة ${newUser} - ${newRank}`);
+      document.getElementById('newUsername').value = ''; 
+      document.getElementById('newPassword').value = ''; 
+      document.getElementById('newRank').value = '';
+    }
+
+    function loadUsers() {
+      const textarea = document.getElementById('allUsers');
+      try {
+        const newUsers = JSON.parse(textarea.value);
+        if (Array.isArray(newUsers)) {
+          users = newUsers;
+          saveData('lspd_users', users);
+          updateRanksDisplay();
+          alert('✅ تم تحديث جميع الحسابات');
+        } else alert('❌ تنسيق JSON غير صحيح');
+      } catch(e) { alert('❌ خطأ في تنسيق JSON'); }
+    }
+
+    function clearAllUsers() {
+      if (confirm('⚠️ هل أنت متأكد؟ سيتم حذف جميع الحسابات!')) {
+        users = [];
+        saveData('lspd_users', users);
+        updateRanksDisplay();
+        alert('🗑️ تم مسح جميع الحسابات');
+      }
+    }
+
+    function showAllUsers() {
+      if (users.length === 0) return alert('لا توجد حسابات');
+      const list = users.map((u,i) => `${i+1}. ${u.username} | ${u.rank} | ${u.access.join(', ')}`).join('\n');
+      alert(`جميع الحسابات:\n\n${list}`);
+    }
+
+    function changeMasterPassword() {
+      const currentPass = document.getElementById('currentMasterPass').value;
+      const newPass = document.getElementById('newMasterPass').value;
+      
+      if (currentPass !== MASTER_PASSWORD) {
+        alert('❌ كلمة المرور الحالية خاطئة');
+        return;
+      }
+      
+      if (!newPass || newPass.length < 4) {
+        alert('⚠️ كلمة مرور جديدة قصيرة جداً (4 أحرف كحد أدنى)');
+        return;
+      }
+      
+      MASTER_PASSWORD = newPass;
+      localStorage.setItem('lspd_master_pass', MASTER_PASSWORD);
+      updateMasterDisplay();
+      alert('🔑 ✅ تم تغيير كلمة مرور المدير بنجاح!');
+      document.getElementById('currentMasterPass').value = '';
+      document.getElementById('newMasterPass').value = '';
+    }
+
+    // Login Function
+    function login() {
+      const u = username.value.trim();
+      const p = password.value.trim();
+      error.textContent = '';
+
+      if (!u || !p) { 
+        error.textContent = 'يرجى إدخال بيانات الدخول كاملة'; 
+        return; 
+      }
+
+      // Admin Login
+      if (u === 'admin' && p === MASTER_PASSWORD) {
+        loginBox.classList.add('hidden');
+        adminPanel.classList.remove('hidden');
+        updateRanksDisplay();
+        updateMasterDisplay();
+        return;
+      }
+
+      // Normal User Login
+      const user = users.find(x => x.username === u && x.password === p);
+      if (!user) {
+        error.textContent = '⚠️ بيانات الدخول غير صحيحة';
+        password.value = '';
+        password.focus();
+        return;
+      }
+
+      currentUser = user;
+      userInfo.innerHTML = `👑 ${user.rank} | ${user.username}`;
+      loginBox.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      username.value = ''; password.value = '';
+    }
+
+    // View Functions
+    function openView(viewId) {
+      if (!currentUser || !currentUser.access.includes(viewId)) {
+        alert(`❌ ليس لديك صلاحية الوصول\nرتبةك: ${currentUser ? currentUser.rank : 'غير مسجل'}`);
+        return;
+      }
+      document.querySelectorAll('.view, .dashboard').forEach(v => v.classList.add('hidden'));
+      document.getElementById(viewId).classList.remove('hidden');
+      
+      if (viewId === 'view1') { loadMessages(); loadCases(); }
+      if (viewId === 'view2') { loadOfficersTable(); }
+      if (viewId === 'view3') { loadSecretChat(); loadTasks(); }
+    }
+
+    function back() {
+      document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+      dashboard.classList.remove('hidden');
+    }
+
+    function backToLogin() {
+      document.querySelectorAll('.admin-panel, .dashboard, .view').forEach(v => v.classList.add('hidden'));
+      loginBox.classList.remove('hidden');
+      currentUser = null;
+      username.focus();
+    }
+
+    // Chat Functions (View1)
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (!message || !currentUser) return;
+
+      messages.push({
+        user: currentUser.username,
+        rank: currentUser.rank,
+        message,
+        time: new Date().toLocaleString('ar-SA'),
+        type: 'admin'
+      });
+      
+      saveData('lspd_messages', messages);
+      input.value = '';
+      loadMessages();
+      
+      cases.push({
+        id: Date.now(),
+        title: `${currentUser.rank} ${currentUser.username}`,
+        type: 'حالة جديدة',
+        date: new Date().toLocaleDateString('ar-SA'),
+        status: 'جارية'
+      });
+      saveData('lspd_cases', cases);
+      loadCases();
+    }
+
+    function loadMessages() {
+      const chat = document.getElementById('chatMessages');
+      chat.innerHTML = messages.map(msg => 
+        `<div class="message ${msg.type}">
+          <strong>${msg.rank} ${msg.user}</strong> 
+          <small style="float:left; opacity:0.7;">${msg.time}</small><br>
+          ${msg.message}
+        </div>`
+      ).join('');
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function loadCases() {
+      const casesList = document.getElementById('casesList');
+      casesList.innerHTML = cases.map(c => 
+        `<div class="case-item">
+          <strong>${c.title}</strong><br>
+          <small>نوع: ${c.type} | ${c.date} | ${c.status}</small>
+        </div>`
+      ).join('');
+    }
+
+    // Officers Table (View2)
+    function loadOfficersTable() {
+      const table = document.getElementById('officersTable');
+      table.innerHTML = officers.map(o => 
+        `<tr>
+          <td>${o.name}</td>
+          <td>${o.rank}</td>
+          <td>${o.points}</td>
+          <td><button class="points-btn" onclick="addPoints('${o.name}')">+10 نقاط</button></td>
+        </tr>`
+      ).join('');
+    }
+
+    function addPoints(name) {
+      const officer = officers.find(o => o.name === name);
+      if (officer) {
+        officer.points += 10;
+        saveData('lspd_officers', officers);
+        loadOfficersTable();
+        alert(`✅ تم إضافة 10 نقاط لـ ${name}`);
+      }
+    }
+
+    // High Command Functions (View3)
+    function loadSecretChat() {
+      document.getElementById('secretChat').innerHTML = secretMessages.map(m => 
+        `<div style="background:rgba(255,0,0,0.2); padding:8px; margin:5px 0; border-radius:8px;">
+          ${m.time}: ${m.message}
+        </div>`
+      ).join('') || 'لا توجد مناقشات سرية';
+    }
+
+    function addSecretMessage() {
+      const input = document.getElementById('secretInput');
+      const message = input.value.trim();
+      if (!message || !currentUser) return;
+      
+      secretMessages.push({
+        message,
+        time: new Date().toLocaleTimeString('ar-SA'),
+        user: currentUser.rank
+      });
+      saveData('lspd_secret', secretMessages);
+      input.value = '';
+      loadSecretChat();
+    }
+
+    function loadTasks() {
+      document.getElementById('urgentTasks').innerHTML = tasks.map(t => 
+        `<div style="background:rgba(255,255,0,0.2); padding:8px; margin:5px 0; border-radius:8px;">
+          • ${t}
+        </div>`
+      ).join('') || 'لا توجد مهام عاجلة';
+    }
+
+    function addTask() {
+      const input = document.getElementById('newTask');
+      const task = input.value.trim();
+      if (!task) return;
+      
+      tasks.push(task);
+      saveData('lspd_tasks', tasks);
+      input.value = '';
+      loadTasks();
+      alert('✅ تم إضافة المهمة');
+    }
+
+    // Initialize
+    updateRanksDisplay();
+    updateMasterDisplay();
+    setTimeout(() => { if (error.textContent) error.textContent = ''; }, 5000);
+  </script>
+</body>
+</html>
